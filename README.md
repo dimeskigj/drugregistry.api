@@ -5,6 +5,17 @@ This document contains the API specification for **DrugRegistry**, which is a pl
 ## Paths
 The following paths are available:
 
+### **/api/drugs**
+
+This endpoint allows users to list all drugs with pagination. It accepts the following parameters:
+
+- **page** (optional): An integer representing the page number of the results (default: 0).
+- **size** (optional): An integer representing the number of results to show per page (default: 10, max: 20).
+
+**Response**: Returns a paged result of drugs ordered by generic name.
+
+---
+
 ### **/api/drugs/search**
 
 This endpoint allows users to search for drugs based on a query string. It accepts the following parameters:

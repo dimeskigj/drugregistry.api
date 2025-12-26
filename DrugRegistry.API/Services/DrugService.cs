@@ -104,6 +104,20 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
         return new PagedResult<Drug>(results, total, page, minimalSize);
     }
 
+    public async Task<PagedResult<Drug>> GetDrugsPaginated(int page, int size)
+    {
+        var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
+        var total = await AppDbContext.Drugs.CountAsync();
+        
+        var drugs = await AppDbContext.Drugs
+            .OrderBy(d => d.GenericName)
+            .Skip(page * minimalSize)
+            .Take(minimalSize)
+            .ToListAsync();
+
+        return new PagedResult<Drug>(drugs, total, page, minimalSize);
+    }
+
     public async Task<IEnumerable<Drug>> GetDrugsByIds(IEnumerable<Guid> ids)
     {
         return await AppDbContext.Drugs.Where(d => ids.Contains(d.Id)).ToListAsync();
