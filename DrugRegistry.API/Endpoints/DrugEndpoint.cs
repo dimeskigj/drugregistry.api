@@ -21,8 +21,17 @@ public class DrugEndpoint : IEndpoint
                     IDrugService drugService,
                     [FromQuery] int? page,
                     [FromQuery] int? size) =>
-                Results.Ok(await drugService.GetDrugsPaginated(page ?? 0, size ?? 10)))
+            {
+                var pageNumber = page ?? 0;
+                var pageSize = size ?? 10;
+                
+                if (pageNumber < 0 || pageSize < 0)
+                    return Results.BadRequest("Page and size parameters must be non-negative.");
+                
+                return Results.Ok(await drugService.GetDrugsPaginated(pageNumber, pageSize));
+            })
             .Produces<PagedResult<Drug>>()
+            .ProducesProblem(400)
             .WithName("List drugs")
             .WithTags("Drugs");
 
