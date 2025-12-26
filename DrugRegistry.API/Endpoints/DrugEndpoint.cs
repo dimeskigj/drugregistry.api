@@ -17,6 +17,15 @@ public class DrugEndpoint : IEndpoint
 
     public WebApplication MapEndpoints(WebApplication app)
     {
+        app.MapGet("/api/drugs", async (
+                    IDrugService drugService,
+                    [FromQuery] int? page,
+                    [FromQuery] int? size) =>
+                Results.Ok(await drugService.GetDrugsPaginated(page ?? 0, size ?? 10)))
+            .Produces<PagedResult<Drug>>()
+            .WithName("List drugs")
+            .WithTags("Drugs");
+
         app.MapGet("/api/drugs/search", async (
                     IDrugService drugService,
                     [FromQuery] string query,
