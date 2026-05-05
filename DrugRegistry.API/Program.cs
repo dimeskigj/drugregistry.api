@@ -4,6 +4,7 @@ using DrugRegistry.API.Jobs;
 using DrugRegistry.API.Scraping;
 using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
+using DrugRegistry.API.Swagger;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 
@@ -12,7 +13,7 @@ var dbConnectionString = builder.Configuration.GetConnectionString("Database");
 
 builder.Services
     .AddEndpointsApiExplorer()
-    .AddSwaggerGen()
+    .AddSwaggerGen(options => options.OperationFilter<V1DeprecatedOperationFilter>())
     .AddDbContextFactory<AppDbContext>(options => options.UseNpgsql(dbConnectionString))
     .RegisterServices()
     .AddHttpClient()
@@ -44,11 +45,8 @@ using (var serviceScope = app.Services.CreateScope())
 
     if (!dbContext.Pharmacies.Any()) await scheduler.TriggerJob(Jobs.PharmacyScrapingJobDetail.Key);
 
-    if (!dbContext.DrugEanData.Any())
-    {
-        var seeder = services.GetRequiredService<CsvEanSeeder>();
-        await seeder.SeedAsync();
-    }
+    var seeder = services.GetRequiredService<CsvEanSeeder>();
+    await seeder.SeedAsync();
 }
 
 

@@ -89,7 +89,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
             .Skip(page * minimalSize)
             .Take(minimalSize);
 
-        var total = await AppDbContext.Pharmacies.CountAsync();
+        var total = pharmacies.Count;
 
         return new PagedResult<Pharmacy>(results, total, page, minimalSize);
     }
@@ -129,6 +129,25 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
             .Skip(page * minimalSize)
             .Take(minimalSize)
             .ToList();
+
+        return new PagedResult<Pharmacy>(results, total, page, minimalSize);
+    }
+
+    public async Task<PagedResult<Pharmacy>> GetPharmaciesPaginated(int page, int size, string? municipality,
+        string? place)
+    {
+        var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
+        var baseQuery = AppDbContext.Pharmacies
+            .Include(p => p.Location)
+            .Where(p => municipality == null || municipality == p.Municipality)
+            .Where(p => place == null || place == p.Place);
+
+        var total = await baseQuery.CountAsync();
+        var results = await baseQuery
+            .OrderBy(p => p.Name)
+            .Skip(page * minimalSize)
+            .Take(minimalSize)
+            .ToListAsync();
 
         return new PagedResult<Pharmacy>(results, total, page, minimalSize);
     }

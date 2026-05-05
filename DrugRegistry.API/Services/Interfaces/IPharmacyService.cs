@@ -18,6 +18,8 @@ public interface IPharmacyService
     Task<PagedResult<Pharmacy>> GetPharmaciesByQuery(string query, int page, int size, string? municipality,
         string? place);
 
+    Task<PagedResult<Pharmacy>> GetPharmaciesPaginated(int page, int size, string? municipality, string? place);
+
     Task<IEnumerable<string>> GetMunicipalitiesOrderedByFrequency();
     Task<IEnumerable<string>> GetPlacesOrderedByFrequencyForMunicipality(string municipality);
     Task<IEnumerable<Pharmacy>> GetPharmaciesByIds(IEnumerable<Guid> ids);

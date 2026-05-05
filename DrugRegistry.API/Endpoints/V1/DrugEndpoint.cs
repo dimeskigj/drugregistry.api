@@ -4,7 +4,7 @@ using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DrugRegistry.API.Endpoints;
+namespace DrugRegistry.API.Endpoints.V1;
 
 // ReSharper disable once UnusedType.Global
 public class DrugEndpoint : IEndpoint
@@ -33,7 +33,8 @@ public class DrugEndpoint : IEndpoint
             .Produces<PagedResult<Drug>>()
             .ProducesProblem(400)
             .WithName("List drugs")
-            .WithTags("Drugs");
+            .WithTags("Drugs")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs."));
 
         app.MapGet("/api/drugs/search", async (
                     IDrugService drugService,
@@ -43,7 +44,8 @@ public class DrugEndpoint : IEndpoint
                 Results.Ok(await drugService.QueryDrugs(query, page ?? 0, size ?? 10)))
             .Produces<PagedResult<Drug>>()
             .WithName("Search drugs")
-            .WithTags("Drugs");
+            .WithTags("Drugs")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs?query=..."));
 
         app.MapPost("/api/drugs/by-ids", async (
                     IDrugService drugService,
@@ -51,7 +53,8 @@ public class DrugEndpoint : IEndpoint
                 Results.Ok(await drugService.GetDrugsByIds(ids)))
             .Produces<IEnumerable<Drug>>()
             .WithName("Find drugs by ids")
-            .WithTags("Drugs");
+            .WithTags("Drugs")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs?id=..."));
 
         app.MapGet("/api/drugs/ean/{ean}", async (
                 IDrugService drugService,
@@ -64,7 +67,8 @@ public class DrugEndpoint : IEndpoint
             .Produces<Drug>()
             .ProducesProblem(404)
             .WithName("Find drug by EAN")
-            .WithTags("Drugs");
+            .WithTags("Drugs")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs/ean/{ean}."));
 
         return app;
     }

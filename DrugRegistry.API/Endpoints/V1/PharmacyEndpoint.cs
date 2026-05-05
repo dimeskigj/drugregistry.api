@@ -4,7 +4,7 @@ using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DrugRegistry.API.Endpoints;
+namespace DrugRegistry.API.Endpoints.V1;
 
 // ReSharper disable once UnusedType.Global
 public class PharmacyEndpoint : IEndpoint
@@ -31,7 +31,8 @@ public class PharmacyEndpoint : IEndpoint
                     municipality, place)))
             .Produces<PagedResult<Pharmacy>>()
             .WithName("Query pharmacies by location")
-            .WithTags("Pharmacies");
+            .WithTags("Pharmacies")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/pharmacies?lon=...&lat=..."));
 
         app.MapGet("/api/pharmacies/search", async (
                     IPharmacyService pharmacyService,
@@ -45,7 +46,8 @@ public class PharmacyEndpoint : IEndpoint
                     municipality, place)))
             .Produces<PagedResult<Pharmacy>>()
             .WithName("Query pharmacies by name and address")
-            .WithTags("Pharmacies");
+            .WithTags("Pharmacies")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/pharmacies?query=..."));
 
         app.MapGet("/api/pharmacies/municipalities-by-frequency", async (
                 IPharmacyService pharmacyService) => Results.Ok(
@@ -53,7 +55,8 @@ public class PharmacyEndpoint : IEndpoint
             ))
             .Produces<IEnumerable<string>>()
             .WithName("Query places by frequency")
-            .WithTags("Pharmacies");
+            .WithTags("Pharmacies")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/pharmacies/municipalities."));
 
         app.MapGet("/api/pharmacies/places-by-frequency", async (
                     IPharmacyService pharmacyService,
@@ -63,7 +66,10 @@ public class PharmacyEndpoint : IEndpoint
                 ))
             .Produces<IEnumerable<string>>()
             .WithName("Query municipalities by frequency")
-            .WithTags("Pharmacies");
+            .WithTags("Pharmacies")
+            .WithMetadata(
+                new ObsoleteAttribute(
+                    "Deprecated API version. Use /api/v2/pharmacies/municipalities/{municipality}/places."));
 
         app.MapPost("/api/pharmacies/by-ids", async (
                     IPharmacyService pharmacyService,
@@ -71,7 +77,8 @@ public class PharmacyEndpoint : IEndpoint
                 Results.Ok(await pharmacyService.GetPharmaciesByIds(ids)))
             .Produces<IEnumerable<Pharmacy>>()
             .WithName("Find pharmacies by ids")
-            .WithTags("Pharmacies");
+            .WithTags("Pharmacies")
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/pharmacies?id=..."));
 
         return app;
     }
