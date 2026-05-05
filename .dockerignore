@@ -1,0 +1,47 @@
+# Sane defaults for Docker builds
+.git
+.gitignore
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+
+# Build outputs and caches
+build/
+dist/
+out/
+coverage/
+.target/
+bin/
+obj/
+*.log
+*.tmp
+*.swp
+
+# Language/tool specific
+node_modules/
+npm-debug.log
+yarn.lock
+.pytest_cache/
+__pycache__/
+*.pyc
+.packages
+.dart_tool/
+.pub-cache/
+
+# Environment and secrets
+.env
+.env.*.local
+secrets/
+*.key
+*.pem
+
+# Docker / Compose files (exclude if not needed in context)
+docker-compose*.yml
+Dockerfile
+
+# Postgres data directories (don't include DB data in image)
+postgres-data
+pgdata
+postgres-data/*
