@@ -6,6 +6,7 @@ using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
 using DrugRegistry.API.Swagger;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models;
 using Quartz;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,7 +14,38 @@ var dbConnectionString = builder.Configuration.GetConnectionString("Database");
 
 builder.Services
     .AddEndpointsApiExplorer()
-    .AddSwaggerGen(options => options.OperationFilter<V1DeprecatedOperationFilter>())
+    .AddSwaggerGen(options =>
+    {
+        options.SwaggerDoc("v2", new OpenApiInfo
+        {
+            Title = "DrugRegistry API V2",
+            Version = "v2"
+        });
+        options.SwaggerDoc("v1", new OpenApiInfo
+        {
+            Title = "DrugRegistry API V1 (Deprecated)",
+            Version = "v1"
+        });
+        options.DocInclusionPredicate((docName, apiDescription) =>
+        {
+            var relativePath = apiDescription.RelativePath;
+            if (string.IsNullOrWhiteSpace(relativePath)) return false;
+
+            var normalizedPath = relativePath.TrimStart('/');
+            var isApiPath = normalizedPath.StartsWith("api/", StringComparison.OrdinalIgnoreCase);
+            var isV2Path = normalizedPath.StartsWith("api/v2/", StringComparison.OrdinalIgnoreCase);
+
+            if (!isApiPath) return false;
+
+            return docName switch
+            {
+                "v2" => isV2Path,
+                "v1" => !isV2Path,
+                _ => false
+            };
+        });
+        options.OperationFilter<V1DeprecatedOperationFilter>();
+    })
     .AddDbContextFactory<AppDbContext>(options => options.UseNpgsql(dbConnectionString))
     .RegisterServices()
     .AddHttpClient()
@@ -29,7 +61,11 @@ var app = builder.Build();
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v2/swagger.json", "DrugRegistry API V2");
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "DrugRegistry API V1 (Deprecated)");
+});
 
 using (var serviceScope = app.Services.CreateScope())
 {
