@@ -73,7 +73,6 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
 
     public async Task<PagedResult<Drug>> QueryDrugs(string query, int page, int size)
     {
-        // TODO: Refactor this to not load the entire DB on the server if performance's an issue
         var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
         var filtered = (await AppDbContext.Drugs.ToListAsync())
             .Select(d => new
@@ -108,7 +107,7 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
     {
         var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
         var total = await AppDbContext.Drugs.CountAsync();
-        
+
         var drugs = await AppDbContext.Drugs
             .OrderBy(d => d.GenericName)
             .Skip(page * minimalSize)
@@ -121,5 +120,13 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
     public async Task<IEnumerable<Drug>> GetDrugsByIds(IEnumerable<Guid> ids)
     {
         return await AppDbContext.Drugs.Where(d => ids.Contains(d.Id)).ToListAsync();
+    }
+
+    public async Task<Drug?> GetDrugByEan(string ean)
+    {
+        var eanData = await AppDbContext.DrugEanData.FirstOrDefaultAsync(e => e.EanCode == ean);
+        if (eanData == null || string.IsNullOrEmpty(eanData.DecisionNumber)) return null;
+
+        return await AppDbContext.Drugs.FirstOrDefaultAsync(d => d.DecisionNumber == eanData.DecisionNumber);
     }
 }

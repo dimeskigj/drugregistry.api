@@ -19,32 +19,34 @@ public static class StringUtils
         { 'Џ', "Dj" }, { 'Ш', "Sh" }
     };
 
-    /// <summary>
-    ///     Converts a Macedonian Cyrillic string to Latin characters. The conversion is based on a predefined mapping
-    ///     of Cyrillic characters to their corresponding Latin equivalents.
-    /// </summary>
     /// <param name="input">The Cyrillic string to convert.</param>
-    /// <returns>The converted string with Latin characters.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if the input string is null.</exception>
-    /// <remarks>
-    ///     The Cyrillic characters and their corresponding Latin equivalents are defined in a static dictionary.
-    ///     If a Cyrillic character is not present in the dictionary, it will be copied to the output
-    ///     string as-is.
-    /// </remarks>
-    public static string ToLatin(this string input)
+    extension(string input)
     {
-        var convertedList = input.Select(c => CyrillicToLatin.TryGetValue(c, out var latin) ? latin : c.ToString());
-        return string.Join(string.Empty, convertedList);
-    }
+        /// <summary>
+        ///     Converts a Macedonian Cyrillic string to Latin characters. The conversion is based on a predefined mapping
+        ///     of Cyrillic characters to their corresponding Latin equivalents.
+        /// </summary>
+        /// <returns>The converted string with Latin characters.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if the input string is null.</exception>
+        /// <remarks>
+        ///     The Cyrillic characters and their corresponding Latin equivalents are defined in a static dictionary.
+        ///     If a Cyrillic character is not present in the dictionary, it will be copied to the output
+        ///     string as-is.
+        /// </remarks>
+        private string ToLatin()
+        {
+            var convertedList = input.Select(c => CyrillicToLatin.TryGetValue(c, out var latin) ? latin : c.ToString());
+            return string.Join(string.Empty, convertedList);
+        }
 
-    /// <summary>
-    ///     Converts a Macedonian Cyrillic string to its Latin representation and then returns the upper-cased version of the
-    ///     result.
-    /// </summary>
-    /// <param name="input">The input string to be converted.</param>
-    /// <returns>The upper-cased version of the Latin representation of the input string.</returns>
-    public static string ToUpperLatin(this string input)
-    {
-        return input.ToLatin().ToUpperInvariant();
+        /// <summary>
+        ///     Converts a Macedonian Cyrillic string to its Latin representation and then returns the upper-cased version of the
+        ///     result.
+        /// </summary>
+        /// <returns>The upper-cased version of the Latin representation of the input string.</returns>
+        public string ToUpperLatin()
+        {
+            return input.ToLatin().ToUpperInvariant();
+        }
     }
 }

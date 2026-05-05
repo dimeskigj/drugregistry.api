@@ -13,4 +13,5 @@ public interface IDrugService
     Task<PagedResult<Drug>> QueryDrugs(string query, int page, int size);
     Task<PagedResult<Drug>> GetDrugsPaginated(int page, int size);
     Task<IEnumerable<Drug>> GetDrugsByIds(IEnumerable<Guid> ids);
+    Task<Drug?> GetDrugByEan(string ean);
 }

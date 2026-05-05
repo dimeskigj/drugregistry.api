@@ -18,16 +18,16 @@ public class DrugEndpoint : IEndpoint
     public WebApplication MapEndpoints(WebApplication app)
     {
         app.MapGet("/api/drugs", async (
-                    IDrugService drugService,
-                    [FromQuery] int? page,
-                    [FromQuery] int? size) =>
+                IDrugService drugService,
+                [FromQuery] int? page,
+                [FromQuery] int? size) =>
             {
                 var pageNumber = page ?? 0;
                 var pageSize = size ?? 10;
-                
+
                 if (pageNumber < 0 || pageSize < 0)
                     return Results.BadRequest("Page and size parameters must be non-negative.");
-                
+
                 return Results.Ok(await drugService.GetDrugsPaginated(pageNumber, pageSize));
             })
             .Produces<PagedResult<Drug>>()
@@ -51,6 +51,19 @@ public class DrugEndpoint : IEndpoint
                 Results.Ok(await drugService.GetDrugsByIds(ids)))
             .Produces<IEnumerable<Drug>>()
             .WithName("Find drugs by ids")
+            .WithTags("Drugs");
+
+        app.MapGet("/api/drugs/ean/{ean}", async (
+                IDrugService drugService,
+                string ean
+            ) =>
+            {
+                var drug = await drugService.GetDrugByEan(ean.Trim());
+                return drug is null ? Results.NotFound($"Drug with EAN '{ean}' was not found.") : Results.Ok(drug);
+            })
+            .Produces<Drug>()
+            .ProducesProblem(404)
+            .WithName("Find drug by EAN")
             .WithTags("Drugs");
 
         return app;

@@ -25,13 +25,13 @@ public class GeocodingService : BaseHttpService, IGeocodingService
         var uri = new Uri(Constants.NominatimGeocodingApiUrl,
             $"https://nominatim.openstreetmap.org/search?q={query}&format=json&limit=1"
         );
-        
+
         await Task.Delay(millisecondsDelay);
-        
+
         var result = await Get<List<NominatimResponseDto>>(uri);
-        
+
         if (!result?.Any() ?? false) return null;
-        
+
         return new Location { Latitude = result!.First().Lat, Longitude = result!.First().Lon };
     }
 }

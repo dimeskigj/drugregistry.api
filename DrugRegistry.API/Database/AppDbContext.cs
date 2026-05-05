@@ -7,4 +7,5 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<Drug> Drugs => Set<Drug>();
     public DbSet<Pharmacy> Pharmacies => Set<Pharmacy>();
+    public DbSet<DrugEanData> DrugEanData => Set<DrugEanData>();
 }

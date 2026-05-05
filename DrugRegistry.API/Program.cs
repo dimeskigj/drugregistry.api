@@ -20,7 +20,8 @@ builder.Services
     .AddQuartzHostedService(opt => opt.WaitForJobsToComplete = false)
     .AddScoped<IGeocodingService, EmptyGeocodingService>()
     .AddScoped<DrugScraper>()
-    .AddScoped<PharmacyScraper>();
+    .AddScoped<PharmacyScraper>()
+    .AddScoped<CsvEanSeeder>();
 
 var app = builder.Build();
 
@@ -42,6 +43,12 @@ using (var serviceScope = app.Services.CreateScope())
     if (!dbContext.Drugs.Any()) await scheduler.TriggerJob(Jobs.DrugScrapingJobDetail.Key);
 
     if (!dbContext.Pharmacies.Any()) await scheduler.TriggerJob(Jobs.PharmacyScrapingJobDetail.Key);
+
+    if (!dbContext.DrugEanData.Any())
+    {
+        var seeder = services.GetRequiredService<CsvEanSeeder>();
+        await seeder.SeedAsync();
+    }
 }
 
 
