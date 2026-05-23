@@ -80,7 +80,6 @@ public class CsvEanSeeder(AppDbContext dbContext, IHttpClientFactory httpClientF
         catch (Exception ex)
         {
             logger.LogError(ex, "Error while seeding CSV EAN data.");
-            throw;
         }
     }
 
