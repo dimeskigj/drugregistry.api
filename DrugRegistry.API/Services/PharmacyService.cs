@@ -11,7 +11,7 @@ namespace DrugRegistry.API.Services;
 
 public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbContext), IPharmacyService
 {
-    private const int MaxItemsPerPage = 20;
+    private const int MaxItemsPerPage = 100;
 
     public async Task<List<Pharmacy>> GetAllPharmacies()
     {

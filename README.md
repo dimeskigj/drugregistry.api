@@ -75,8 +75,8 @@ Collection endpoints return `data`, `totalCount`, `page`, and `size`. Invalid in
 Request limits:
 
 - `page`: `0..500`, default `0`.
-- `size`: `1..20`, default `10`.
-- `query`: `2..80` trimmed characters.
+- `size`: `1..100`, default `10`.
+- `query`: `2..200` trimmed characters.
 - `id`: at most `50` repeated ids per request.
 - `municipality`: at most `100` trimmed characters.
 - `place`: at most `100` trimmed characters.

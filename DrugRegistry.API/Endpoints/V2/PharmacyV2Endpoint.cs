@@ -109,7 +109,7 @@ public class PharmacyV2Endpoint : IEndpoint
             .WithName("List V2 pharmacies")
             .WithSummary("List or filter pharmacies")
             .WithDescription(
-                "Returns paged pharmacies. Limits: page 0-500, size 1-20, query 2-80 chars, municipality/place up to 100 chars, lon -180..180, lat -90..90, up to 50 repeated id filters.")
+                "Returns paged pharmacies. Limits: page 0-500, size 1-100, query 2-200 chars, municipality/place up to 100 chars, lon -180..180, lat -90..90, up to 50 repeated id filters.")
             .CacheOutput(ApiLimits.CachePolicies.List);
 
         group.MapGet("/{id:guid}", async (

@@ -65,7 +65,7 @@ public class DrugV2Endpoint : IEndpoint
             .WithName("List V2 drugs")
             .WithSummary("List or filter drugs")
             .WithDescription(
-                "Returns paged drugs. Limits: page 0-500, size 1-20, query 2-80 chars, up to 50 repeated id filters.")
+                "Returns paged drugs. Limits: page 0-500, size 1-100, query 2-200 chars, up to 50 repeated id filters.")
             .CacheOutput(ApiLimits.CachePolicies.List);
 
         group.MapGet("/{id:guid}", async (
