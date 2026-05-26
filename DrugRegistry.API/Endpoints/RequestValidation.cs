@@ -75,7 +75,8 @@ internal static class RequestValidation
             return "'lat' must be a finite number.";
 
         if (lon is < ApiLimits.Coordinates.MinLongitude or > ApiLimits.Coordinates.MaxLongitude)
-            return $"'lon' must be between {ApiLimits.Coordinates.MinLongitude} and {ApiLimits.Coordinates.MaxLongitude}.";
+            return
+                $"'lon' must be between {ApiLimits.Coordinates.MinLongitude} and {ApiLimits.Coordinates.MaxLongitude}.";
 
         return lat is < ApiLimits.Coordinates.MinLatitude or > ApiLimits.Coordinates.MaxLatitude
             ? $"'lat' must be between {ApiLimits.Coordinates.MinLatitude} and {ApiLimits.Coordinates.MaxLatitude}."

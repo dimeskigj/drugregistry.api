@@ -8,11 +8,11 @@ using DrugRegistry.API.Scraping;
 using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Scalar.AspNetCore;
+using IPNetwork = System.Net.IPNetwork;
 
 var builder = WebApplication.CreateBuilder(args);
 var dbConnectionString = builder.Configuration.GetConnectionString("Database");
@@ -28,10 +28,7 @@ builder.Services
             context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
         };
     })
-    .AddOpenApi("v2", options =>
-    {
-        options.ShouldInclude = IsV2ApiDescription;
-    })
+    .AddOpenApi("v2", options => { options.ShouldInclude = IsV2ApiDescription; })
     .AddOpenApi("v1", options =>
     {
         options.ShouldInclude = IsV1ApiDescription;
@@ -128,13 +125,13 @@ app.MapGet("/health/ready", async (
     .ExcludeFromDescription()
     .RequireRateLimiting(ApiLimits.RateLimitPolicies.Health);
 
-app.MapOpenApi("/openapi/{documentName}.json")
+app.MapOpenApi()
     .RequireRateLimiting(ApiLimits.RateLimitPolicies.Docs);
 
 app.MapScalarApiReference("/docs", options => options
         .WithTitle("DrugRegistry API")
         .WithOpenApiRoutePattern("/openapi/{documentName}.json")
-        .AddDocument("v2", "DrugRegistry API V2", "/openapi/v2.json", isDefault: true)
+        .AddDocument("v2", "DrugRegistry API V2", "/openapi/v2.json", true)
         .AddDocument("v1", "DrugRegistry API V1 (Deprecated)", "/openapi/v1.json"))
     .RequireRateLimiting(ApiLimits.RateLimitPolicies.Docs);
 
@@ -172,7 +169,7 @@ static bool IsV1ApiDescription(ApiDescription apiDescription)
 {
     var normalizedPath = apiDescription.RelativePath?.TrimStart('/');
     return normalizedPath?.StartsWith("api/", StringComparison.OrdinalIgnoreCase) == true &&
-           normalizedPath.StartsWith("api/v2/", StringComparison.OrdinalIgnoreCase) == false;
+           !normalizedPath.StartsWith("api/v2/", StringComparison.OrdinalIgnoreCase);
 }
 
 static string[] GetAllowedOrigins(IConfiguration configuration)
@@ -185,14 +182,15 @@ static void ConfigureKnownForwarders(IConfiguration configuration, ForwardedHead
     foreach (var knownProxy in GetConfiguredValues(configuration, "ForwardedHeaders:KnownProxies"))
     {
         if (!IPAddress.TryParse(knownProxy, out var proxyAddress))
-            throw new InvalidOperationException($"ForwardedHeaders:KnownProxies contains invalid IP address '{knownProxy}'.");
+            throw new InvalidOperationException(
+                $"ForwardedHeaders:KnownProxies contains invalid IP address '{knownProxy}'.");
 
         options.KnownProxies.Add(proxyAddress);
     }
 
     foreach (var knownNetwork in GetConfiguredValues(configuration, "ForwardedHeaders:KnownNetworks"))
     {
-        if (!System.Net.IPNetwork.TryParse(knownNetwork, out var proxyNetwork))
+        if (!IPNetwork.TryParse(knownNetwork, out var proxyNetwork))
             throw new InvalidOperationException(
                 $"ForwardedHeaders:KnownNetworks contains invalid CIDR network '{knownNetwork}'.");
 

@@ -128,6 +128,7 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
         var eanData = await AppDbContext.DrugEanData.AsNoTracking().FirstOrDefaultAsync(e => e.EanCode == ean);
         if (eanData == null || string.IsNullOrEmpty(eanData.DecisionNumber)) return null;
 
-        return await AppDbContext.Drugs.AsNoTracking().FirstOrDefaultAsync(d => d.DecisionNumber == eanData.DecisionNumber);
+        return await AppDbContext.Drugs.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.DecisionNumber == eanData.DecisionNumber);
     }
 }

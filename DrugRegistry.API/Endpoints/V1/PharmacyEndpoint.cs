@@ -3,7 +3,6 @@ using DrugRegistry.API.Endpoints.Interfaces;
 using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace DrugRegistry.API.Endpoints.V1;
 
@@ -19,37 +18,37 @@ public class PharmacyEndpoint : IEndpoint
     public WebApplication MapEndpoints(WebApplication app)
     {
         app.MapGet("/api/pharmacies/by-location", async (
-                    IPharmacyService pharmacyService,
-                    [FromQuery] double lon,
-                    [FromQuery] double lat,
-                    [FromQuery] int? page,
-                    [FromQuery] int? size,
-                    [FromQuery] string? municipality,
-                    [FromQuery] string? place) =>
-                {
-                    var pageNumber = page ?? ApiLimits.DefaultPage;
-                    var pageSize = size ?? ApiLimits.DefaultPageSize;
+                IPharmacyService pharmacyService,
+                [FromQuery] double lon,
+                [FromQuery] double lat,
+                [FromQuery] int? page,
+                [FromQuery] int? size,
+                [FromQuery] string? municipality,
+                [FromQuery] string? place) =>
+            {
+                var pageNumber = page ?? ApiLimits.DefaultPage;
+                var pageSize = size ?? ApiLimits.DefaultPageSize;
 
-                    if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
-                        return BadRequest(paginationError);
+                if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
+                    return BadRequest(paginationError);
 
-                    if (RequestValidation.ValidateCoordinates(lon, lat) is { } coordinateError)
-                        return BadRequest(coordinateError);
+                if (RequestValidation.ValidateCoordinates(lon, lat) is { } coordinateError)
+                    return BadRequest(coordinateError);
 
-                    if (RequestValidation.ValidateOptionalMunicipality(municipality, out var normalizedMunicipality) is
-                        { } municipalityError)
-                        return BadRequest(municipalityError);
+                if (RequestValidation.ValidateOptionalMunicipality(municipality, out var normalizedMunicipality) is
+                    { } municipalityError)
+                    return BadRequest(municipalityError);
 
-                    if (RequestValidation.ValidateOptionalPlace(place, out var normalizedPlace) is { } placeError)
-                        return BadRequest(placeError);
+                if (RequestValidation.ValidateOptionalPlace(place, out var normalizedPlace) is { } placeError)
+                    return BadRequest(placeError);
 
-                    return Results.Ok(await pharmacyService.GetPharmaciesByDistance(
-                        new Location { Longitude = lon, Latitude = lat },
-                        pageNumber,
-                        pageSize,
-                        normalizedMunicipality,
-                        normalizedPlace));
-                })
+                return Results.Ok(await pharmacyService.GetPharmaciesByDistance(
+                    new Location { Longitude = lon, Latitude = lat },
+                    pageNumber,
+                    pageSize,
+                    normalizedMunicipality,
+                    normalizedPlace));
+            })
             .Produces<PagedResult<Pharmacy>>()
             .WithName("Query pharmacies by location")
             .WithTags("Pharmacies")
@@ -58,33 +57,33 @@ public class PharmacyEndpoint : IEndpoint
             .CacheOutput(ApiLimits.CachePolicies.List);
 
         app.MapGet("/api/pharmacies/search", async (
-                    IPharmacyService pharmacyService,
-                    [FromQuery] string query,
-                    [FromQuery] int? page,
-                    [FromQuery] int? size,
-                    [FromQuery] string? municipality,
-                    [FromQuery] string? place) =>
-                {
-                    var pageNumber = page ?? ApiLimits.DefaultPage;
-                    var pageSize = size ?? ApiLimits.DefaultPageSize;
+                IPharmacyService pharmacyService,
+                [FromQuery] string query,
+                [FromQuery] int? page,
+                [FromQuery] int? size,
+                [FromQuery] string? municipality,
+                [FromQuery] string? place) =>
+            {
+                var pageNumber = page ?? ApiLimits.DefaultPage;
+                var pageSize = size ?? ApiLimits.DefaultPageSize;
 
-                    if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
-                        return BadRequest(paginationError);
+                if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
+                    return BadRequest(paginationError);
 
-                    if (RequestValidation.ValidateRequiredQuery(query, out var normalizedQuery) is { } queryError)
-                        return BadRequest(queryError);
+                if (RequestValidation.ValidateRequiredQuery(query, out var normalizedQuery) is { } queryError)
+                    return BadRequest(queryError);
 
-                    if (RequestValidation.ValidateOptionalMunicipality(municipality, out var normalizedMunicipality) is
-                        { } municipalityError)
-                        return BadRequest(municipalityError);
+                if (RequestValidation.ValidateOptionalMunicipality(municipality, out var normalizedMunicipality) is
+                    { } municipalityError)
+                    return BadRequest(municipalityError);
 
-                    if (RequestValidation.ValidateOptionalPlace(place, out var normalizedPlace) is { } placeError)
-                        return BadRequest(placeError);
+                if (RequestValidation.ValidateOptionalPlace(place, out var normalizedPlace) is { } placeError)
+                    return BadRequest(placeError);
 
-                    return Results.Ok(await pharmacyService.GetPharmaciesByQuery(normalizedQuery,
-                        pageNumber, pageSize,
-                        normalizedMunicipality, normalizedPlace));
-                })
+                return Results.Ok(await pharmacyService.GetPharmaciesByQuery(normalizedQuery,
+                    pageNumber, pageSize,
+                    normalizedMunicipality, normalizedPlace));
+            })
             .Produces<PagedResult<Pharmacy>>()
             .WithName("Query pharmacies by name and address")
             .WithTags("Pharmacies")
@@ -93,9 +92,9 @@ public class PharmacyEndpoint : IEndpoint
             .CacheOutput(ApiLimits.CachePolicies.List);
 
         app.MapGet("/api/pharmacies/municipalities-by-frequency", async (
-                    IPharmacyService pharmacyService) => Results.Ok(
-                    await pharmacyService.GetMunicipalitiesOrderedByFrequency()
-                ))
+                IPharmacyService pharmacyService) => Results.Ok(
+                await pharmacyService.GetMunicipalitiesOrderedByFrequency()
+            ))
             .Produces<IEnumerable<string>>()
             .WithName("Query places by frequency")
             .WithTags("Pharmacies")
@@ -104,20 +103,20 @@ public class PharmacyEndpoint : IEndpoint
             .CacheOutput(ApiLimits.CachePolicies.Lookup);
 
         app.MapGet("/api/pharmacies/places-by-frequency", async (
-                    IPharmacyService pharmacyService,
-                    [FromQuery] string municipality) =>
-                {
-                    if (RequestValidation.ValidateOptionalMunicipality(municipality, out var normalizedMunicipality) is
-                        { } municipalityError)
-                        return BadRequest(municipalityError);
+                IPharmacyService pharmacyService,
+                [FromQuery] string municipality) =>
+            {
+                if (RequestValidation.ValidateOptionalMunicipality(municipality, out var normalizedMunicipality) is
+                    { } municipalityError)
+                    return BadRequest(municipalityError);
 
-                    if (normalizedMunicipality is null)
-                        return BadRequest("The 'municipality' query parameter is required.");
+                if (normalizedMunicipality is null)
+                    return BadRequest("The 'municipality' query parameter is required.");
 
-                    return Results.Ok(
-                        await pharmacyService.GetPlacesOrderedByFrequencyForMunicipality(normalizedMunicipality)
-                    );
-                })
+                return Results.Ok(
+                    await pharmacyService.GetPlacesOrderedByFrequencyForMunicipality(normalizedMunicipality)
+                );
+            })
             .Produces<IEnumerable<string>>()
             .WithName("Query municipalities by frequency")
             .WithTags("Pharmacies")
@@ -128,15 +127,15 @@ public class PharmacyEndpoint : IEndpoint
             .CacheOutput(ApiLimits.CachePolicies.Lookup);
 
         app.MapPost("/api/pharmacies/by-ids", async (
-                    IPharmacyService pharmacyService,
-                    [FromBody] IEnumerable<Guid> ids) =>
-                {
-                    var idList = ids.ToArray();
-                    if (RequestValidation.ValidateIdFilters(idList.Length) is { } idFilterError)
-                        return BadRequest(idFilterError);
+                IPharmacyService pharmacyService,
+                [FromBody] IEnumerable<Guid> ids) =>
+            {
+                var idList = ids.ToArray();
+                if (RequestValidation.ValidateIdFilters(idList.Length) is { } idFilterError)
+                    return BadRequest(idFilterError);
 
-                    return Results.Ok(await pharmacyService.GetPharmaciesByIds(idList));
-                })
+                return Results.Ok(await pharmacyService.GetPharmaciesByIds(idList));
+            })
             .Produces<IEnumerable<Pharmacy>>()
             .WithName("Find pharmacies by ids")
             .WithTags("Pharmacies")

@@ -1,10 +1,8 @@
 ﻿using DrugRegistry.API.Domain;
-using DrugRegistry.API.Endpoints;
 using DrugRegistry.API.Endpoints.Interfaces;
 using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace DrugRegistry.API.Endpoints.V1;
 
@@ -41,22 +39,22 @@ public class DrugEndpoint : IEndpoint
             .CacheOutput(ApiLimits.CachePolicies.List);
 
         app.MapGet("/api/drugs/search", async (
-                    IDrugService drugService,
-                    [FromQuery] string query,
-                    [FromQuery] int? page,
-                    [FromQuery] int? size) =>
-                {
-                    var pageNumber = page ?? ApiLimits.DefaultPage;
-                    var pageSize = size ?? ApiLimits.DefaultPageSize;
+                IDrugService drugService,
+                [FromQuery] string query,
+                [FromQuery] int? page,
+                [FromQuery] int? size) =>
+            {
+                var pageNumber = page ?? ApiLimits.DefaultPage;
+                var pageSize = size ?? ApiLimits.DefaultPageSize;
 
-                    if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
-                        return BadRequest(paginationError);
+                if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
+                    return BadRequest(paginationError);
 
-                    if (RequestValidation.ValidateRequiredQuery(query, out var normalizedQuery) is { } queryError)
-                        return BadRequest(queryError);
+                if (RequestValidation.ValidateRequiredQuery(query, out var normalizedQuery) is { } queryError)
+                    return BadRequest(queryError);
 
-                    return Results.Ok(await drugService.QueryDrugs(normalizedQuery, pageNumber, pageSize));
-                })
+                return Results.Ok(await drugService.QueryDrugs(normalizedQuery, pageNumber, pageSize));
+            })
             .Produces<PagedResult<Drug>>()
             .WithName("Search drugs")
             .WithTags("Drugs")
@@ -65,15 +63,15 @@ public class DrugEndpoint : IEndpoint
             .CacheOutput(ApiLimits.CachePolicies.List);
 
         app.MapPost("/api/drugs/by-ids", async (
-                    IDrugService drugService,
-                    [FromBody] IEnumerable<Guid> ids) =>
-                {
-                    var idList = ids.ToArray();
-                    if (RequestValidation.ValidateIdFilters(idList.Length) is { } idFilterError)
-                        return BadRequest(idFilterError);
+                IDrugService drugService,
+                [FromBody] IEnumerable<Guid> ids) =>
+            {
+                var idList = ids.ToArray();
+                if (RequestValidation.ValidateIdFilters(idList.Length) is { } idFilterError)
+                    return BadRequest(idFilterError);
 
-                    return Results.Ok(await drugService.GetDrugsByIds(idList));
-                })
+                return Results.Ok(await drugService.GetDrugsByIds(idList));
+            })
             .Produces<IEnumerable<Drug>>()
             .WithName("Find drugs by ids")
             .WithTags("Drugs")
@@ -89,7 +87,9 @@ public class DrugEndpoint : IEndpoint
                     return BadRequest(eanError);
 
                 var drug = await drugService.GetDrugByEan(trimmedEan);
-                return drug is null ? Results.NotFound($"Drug with EAN '{trimmedEan}' was not found.") : Results.Ok(drug);
+                return drug is null
+                    ? Results.NotFound($"Drug with EAN '{trimmedEan}' was not found.")
+                    : Results.Ok(drug);
             })
             .Produces<Drug>()
             .ProducesProblem(400)

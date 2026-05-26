@@ -1,10 +1,8 @@
 using DrugRegistry.API.Contracts.V2;
 using DrugRegistry.API.Domain;
-using DrugRegistry.API.Endpoints;
 using DrugRegistry.API.Endpoints.Interfaces;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 
 namespace DrugRegistry.API.Endpoints.V2;
 
