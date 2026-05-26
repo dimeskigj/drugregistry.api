@@ -5,10 +5,10 @@ public static class ApiLimits
     public const int DefaultPage = 0;
     public const int DefaultPageSize = 10;
     public const int MaxPage = 500;
-    public const int MaxPageSize = 20;
+    public const int MaxPageSize = 100;
     public const int MaxIdFilters = 50;
     public const int MinQueryLength = 2;
-    public const int MaxQueryLength = 80;
+    public const int MaxQueryLength = 200;
     public const int MaxMunicipalityLength = 100;
     public const int MaxPlaceLength = 100;
     public const int MaxEanLength = 32;
