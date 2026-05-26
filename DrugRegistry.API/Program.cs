@@ -101,7 +101,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in development; in production, the reverse proxy handles this
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors(ApiLimits.Cors.PolicyName);
 app.UseRateLimiter();
 app.UseOutputCache();
