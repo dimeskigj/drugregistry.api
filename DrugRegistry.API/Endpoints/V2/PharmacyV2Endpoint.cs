@@ -1,8 +1,10 @@
 using DrugRegistry.API.Contracts.V2;
 using DrugRegistry.API.Domain;
+using DrugRegistry.API.Endpoints;
 using DrugRegistry.API.Endpoints.Interfaces;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace DrugRegistry.API.Endpoints.V2;
 
@@ -16,7 +18,9 @@ public class PharmacyV2Endpoint : IEndpoint
 
     public WebApplication MapEndpoints(WebApplication app)
     {
-        var group = app.MapGroup("/api/v2/pharmacies").WithTags("Pharmacies V2");
+        var group = app.MapGroup("/api/v2/pharmacies")
+            .WithTags("Pharmacies V2")
+            .RequireRateLimiting(ApiLimits.RateLimitPolicies.PublicApi);
 
         group.MapGet("/", async (
                 IPharmacyService pharmacyService,
@@ -31,6 +35,9 @@ public class PharmacyV2Endpoint : IEndpoint
             {
                 if (ids is { Length: > 0 })
                 {
+                    if (RequestValidation.ValidateIdFilters(ids.Length) is { } idFilterError)
+                        return V2ProblemResponses.BadRequest(idFilterError);
+
                     if (!string.IsNullOrWhiteSpace(query) || lon.HasValue || lat.HasValue ||
                         !string.IsNullOrWhiteSpace(municipality) || !string.IsNullOrWhiteSpace(place))
                         return V2ProblemResponses.BadRequest(
@@ -48,26 +55,39 @@ public class PharmacyV2Endpoint : IEndpoint
                             pharmaciesById.Count));
                 }
 
-                var pageNumber = page ?? 0;
-                var pageSize = size ?? 10;
+                var pageNumber = page ?? ApiLimits.DefaultPage;
+                var pageSize = size ?? ApiLimits.DefaultPageSize;
 
-                if (pageNumber < 0 || pageSize <= 0)
-                    return V2ProblemResponses.BadRequest(
-                        "'page' must be greater than or equal to 0 and 'size' must be greater than 0.");
+                if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
+                    return V2ProblemResponses.BadRequest(paginationError);
+
+                if (RequestValidation.ValidateOptionalQuery(query, out var normalizedQuery) is { } queryError)
+                    return V2ProblemResponses.BadRequest(queryError);
+
+                if (RequestValidation.ValidateOptionalMunicipality(municipality, out var normalizedMunicipality) is
+                    { } municipalityError)
+                    return V2ProblemResponses.BadRequest(municipalityError);
+
+                if (RequestValidation.ValidateOptionalPlace(place, out var normalizedPlace) is { } placeError)
+                    return V2ProblemResponses.BadRequest(placeError);
 
                 var hasLongitude = lon.HasValue;
                 var hasLatitude = lat.HasValue;
                 if (hasLongitude != hasLatitude)
                     return V2ProblemResponses.BadRequest("Both 'lon' and 'lat' must be provided together.");
 
-                if (hasLongitude && !string.IsNullOrWhiteSpace(query))
+                if (hasLongitude && normalizedQuery is not null)
                     return V2ProblemResponses.BadRequest(
                         "The 'query' filter cannot be combined with geographic distance sorting ('lon' and 'lat').");
 
-                if (!string.IsNullOrWhiteSpace(query))
+                if (hasLongitude && hasLatitude &&
+                    RequestValidation.ValidateCoordinates(lon!.Value, lat!.Value) is { } coordinateError)
+                    return V2ProblemResponses.BadRequest(coordinateError);
+
+                if (normalizedQuery is not null)
                 {
-                    var searched = await pharmacyService.GetPharmaciesByQuery(query.Trim(), pageNumber, pageSize,
-                        municipality, place);
+                    var searched = await pharmacyService.GetPharmaciesByQuery(normalizedQuery, pageNumber, pageSize,
+                        normalizedMunicipality, normalizedPlace);
                     return Results.Ok(searched.ToResponse());
                 }
 
@@ -77,12 +97,13 @@ public class PharmacyV2Endpoint : IEndpoint
                         new Location { Longitude = lon!.Value, Latitude = lat!.Value },
                         pageNumber,
                         pageSize,
-                        municipality,
-                        place);
+                        normalizedMunicipality,
+                        normalizedPlace);
                     return Results.Ok(byDistance.ToResponse());
                 }
 
-                var paged = await pharmacyService.GetPharmaciesPaginated(pageNumber, pageSize, municipality, place);
+                var paged = await pharmacyService.GetPharmaciesPaginated(pageNumber, pageSize, normalizedMunicipality,
+                    normalizedPlace);
                 return Results.Ok(paged.ToResponse());
             })
             .Produces<PagedResponse<PharmacyResponse>>()
@@ -90,7 +111,8 @@ public class PharmacyV2Endpoint : IEndpoint
             .WithName("List V2 pharmacies")
             .WithSummary("List or filter pharmacies")
             .WithDescription(
-                "Returns paged pharmacies. Supports search by query, ordering by distance, filtering by municipality/place, or explicit id filtering.");
+                "Returns paged pharmacies. Limits: page 0-500, size 1-20, query 2-80 chars, municipality/place up to 100 chars, lon -180..180, lat -90..90, up to 50 repeated id filters.")
+            .CacheOutput(ApiLimits.CachePolicies.List);
 
         group.MapGet("/{id:guid}", async (
                 IPharmacyService pharmacyService,
@@ -104,29 +126,33 @@ public class PharmacyV2Endpoint : IEndpoint
             .Produces<PharmacyResponse>()
             .ProducesProblem(404)
             .WithName("Get V2 pharmacy by id")
-            .WithSummary("Get a pharmacy by id");
+            .WithSummary("Get a pharmacy by id")
+            .CacheOutput(ApiLimits.CachePolicies.Detail);
 
         group.MapGet("/municipalities", async (
                     IPharmacyService pharmacyService) =>
                 Results.Ok(await pharmacyService.GetMunicipalitiesOrderedByFrequency()))
             .Produces<IEnumerable<string>>()
             .WithName("List V2 municipalities by pharmacy frequency")
-            .WithSummary("List municipalities by pharmacy frequency");
+            .WithSummary("List municipalities by pharmacy frequency")
+            .CacheOutput(ApiLimits.CachePolicies.Lookup);
 
         group.MapGet("/municipalities/{municipality}/places", async (
                 IPharmacyService pharmacyService,
                 string municipality) =>
             {
-                if (string.IsNullOrWhiteSpace(municipality))
-                    return V2ProblemResponses.BadRequest("The 'municipality' path parameter is required.");
+                if (RequestValidation.ValidateRequiredMunicipality(municipality, out var normalizedMunicipality) is
+                    { } municipalityError)
+                    return V2ProblemResponses.BadRequest(municipalityError);
 
-                var places = await pharmacyService.GetPlacesOrderedByFrequencyForMunicipality(municipality.Trim());
+                var places = await pharmacyService.GetPlacesOrderedByFrequencyForMunicipality(normalizedMunicipality);
                 return Results.Ok(places);
             })
             .Produces<IEnumerable<string>>()
             .ProducesProblem(400)
             .WithName("List V2 municipality places by pharmacy frequency")
-            .WithSummary("List places in a municipality by pharmacy frequency");
+            .WithSummary("List places in a municipality by pharmacy frequency")
+            .CacheOutput(ApiLimits.CachePolicies.Lookup);
 
         return app;
     }

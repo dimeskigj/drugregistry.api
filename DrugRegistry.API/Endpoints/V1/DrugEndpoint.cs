@@ -1,8 +1,10 @@
 ﻿using DrugRegistry.API.Domain;
+using DrugRegistry.API.Endpoints;
 using DrugRegistry.API.Endpoints.Interfaces;
 using DrugRegistry.API.Services;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace DrugRegistry.API.Endpoints.V1;
 
@@ -22,11 +24,11 @@ public class DrugEndpoint : IEndpoint
                 [FromQuery] int? page,
                 [FromQuery] int? size) =>
             {
-                var pageNumber = page ?? 0;
-                var pageSize = size ?? 10;
+                var pageNumber = page ?? ApiLimits.DefaultPage;
+                var pageSize = size ?? ApiLimits.DefaultPageSize;
 
-                if (pageNumber < 0 || pageSize < 0)
-                    return Results.BadRequest("Page and size parameters must be non-negative.");
+                if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
+                    return BadRequest(paginationError);
 
                 return Results.Ok(await drugService.GetDrugsPaginated(pageNumber, pageSize));
             })
@@ -34,42 +36,79 @@ public class DrugEndpoint : IEndpoint
             .ProducesProblem(400)
             .WithName("List drugs")
             .WithTags("Drugs")
-            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs."));
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs."))
+            .RequireRateLimiting(ApiLimits.RateLimitPolicies.PublicApi)
+            .CacheOutput(ApiLimits.CachePolicies.List);
 
         app.MapGet("/api/drugs/search", async (
                     IDrugService drugService,
                     [FromQuery] string query,
                     [FromQuery] int? page,
                     [FromQuery] int? size) =>
-                Results.Ok(await drugService.QueryDrugs(query, page ?? 0, size ?? 10)))
+                {
+                    var pageNumber = page ?? ApiLimits.DefaultPage;
+                    var pageSize = size ?? ApiLimits.DefaultPageSize;
+
+                    if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
+                        return BadRequest(paginationError);
+
+                    if (RequestValidation.ValidateRequiredQuery(query, out var normalizedQuery) is { } queryError)
+                        return BadRequest(queryError);
+
+                    return Results.Ok(await drugService.QueryDrugs(normalizedQuery, pageNumber, pageSize));
+                })
             .Produces<PagedResult<Drug>>()
             .WithName("Search drugs")
             .WithTags("Drugs")
-            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs?query=..."));
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs?query=..."))
+            .RequireRateLimiting(ApiLimits.RateLimitPolicies.PublicApi)
+            .CacheOutput(ApiLimits.CachePolicies.List);
 
         app.MapPost("/api/drugs/by-ids", async (
                     IDrugService drugService,
                     [FromBody] IEnumerable<Guid> ids) =>
-                Results.Ok(await drugService.GetDrugsByIds(ids)))
+                {
+                    var idList = ids.ToArray();
+                    if (RequestValidation.ValidateIdFilters(idList.Length) is { } idFilterError)
+                        return BadRequest(idFilterError);
+
+                    return Results.Ok(await drugService.GetDrugsByIds(idList));
+                })
             .Produces<IEnumerable<Drug>>()
             .WithName("Find drugs by ids")
             .WithTags("Drugs")
-            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs?id=..."));
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs?id=..."))
+            .RequireRateLimiting(ApiLimits.RateLimitPolicies.PublicApi);
 
         app.MapGet("/api/drugs/ean/{ean}", async (
                 IDrugService drugService,
                 string ean
             ) =>
             {
-                var drug = await drugService.GetDrugByEan(ean.Trim());
-                return drug is null ? Results.NotFound($"Drug with EAN '{ean}' was not found.") : Results.Ok(drug);
+                if (RequestValidation.ValidateEan(ean, out var trimmedEan) is { } eanError)
+                    return BadRequest(eanError);
+
+                var drug = await drugService.GetDrugByEan(trimmedEan);
+                return drug is null ? Results.NotFound($"Drug with EAN '{trimmedEan}' was not found.") : Results.Ok(drug);
             })
             .Produces<Drug>()
+            .ProducesProblem(400)
             .ProducesProblem(404)
             .WithName("Find drug by EAN")
             .WithTags("Drugs")
-            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs/ean/{ean}."));
+            .WithMetadata(new ObsoleteAttribute("Deprecated API version. Use /api/v2/drugs/ean/{ean}."))
+            .RequireRateLimiting(ApiLimits.RateLimitPolicies.PublicApi)
+            .CacheOutput(ApiLimits.CachePolicies.Detail);
 
         return app;
+    }
+
+    private static IResult BadRequest(string detail)
+    {
+        return Results.Problem(
+            statusCode: StatusCodes.Status400BadRequest,
+            title: "Invalid request",
+            detail: detail,
+            type: "https://httpstatuses.com/400");
     }
 }

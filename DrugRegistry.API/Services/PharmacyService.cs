@@ -15,12 +15,12 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
 
     public async Task<List<Pharmacy>> GetAllPharmacies()
     {
-        return await AppDbContext.Pharmacies.ToListAsync();
+        return await AppDbContext.Pharmacies.AsNoTracking().ToListAsync();
     }
 
     public async Task<Pharmacy?> GetPharmacyById(Guid id)
     {
-        return await AppDbContext.Pharmacies.FirstOrDefaultAsync(p => p.Id == id);
+        return await AppDbContext.Pharmacies.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
     }
 
     public async Task<Pharmacy?> GetPharmacyByIdNumber(string idNumber)
@@ -48,7 +48,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
 
     public async Task<Guid> UpdatePharmacy(Pharmacy pharmacy, Guid id)
     {
-        var existingPharmacy = await GetPharmacyById(id);
+        var existingPharmacy = await AppDbContext.Pharmacies.FirstOrDefaultAsync(p => p.Id == id);
         if (existingPharmacy is null) throw new ArgumentException("Invalid pharmacy id");
         existingPharmacy.IdNumber = pharmacy.IdNumber;
         existingPharmacy.TaxNumber = pharmacy.TaxNumber;
@@ -78,6 +78,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
     {
         var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
         var pharmacies = await AppDbContext.Pharmacies
+            .AsNoTracking()
             .Include(p => p.Location)
             .Where(p => municipality == null || municipality == p.Municipality)
             .Where(p => place == null || place == p.Place)
@@ -99,6 +100,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
     {
         var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
         var pharmacies = await AppDbContext.Pharmacies
+            .AsNoTracking()
             .Include(p => p.Location)
             .Where(p => municipality == null || municipality == p.Municipality)
             .Where(p => place == null || place == p.Place)
@@ -138,6 +140,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
     {
         var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
         var baseQuery = AppDbContext.Pharmacies
+            .AsNoTracking()
             .Include(p => p.Location)
             .Where(p => municipality == null || municipality == p.Municipality)
             .Where(p => place == null || place == p.Place);
@@ -155,6 +158,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
     public async Task<IEnumerable<string>> GetMunicipalitiesOrderedByFrequency()
     {
         return (await AppDbContext.Pharmacies
+            .AsNoTracking()
             .GroupBy(p => p.Municipality)
             .OrderByDescending(g => g.Count())
             .Select(g => g.Key)
@@ -165,6 +169,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
     public async Task<IEnumerable<string>> GetPlacesOrderedByFrequencyForMunicipality(string municipality)
     {
         return (await AppDbContext.Pharmacies
+            .AsNoTracking()
             .Where(p => p.Municipality == municipality)
             .GroupBy(p => p.Place)
             .OrderByDescending(g => g.Count())
@@ -176,6 +181,7 @@ public class PharmacyService(AppDbContext appDbContext) : BaseDbService(appDbCon
     public async Task<IEnumerable<Pharmacy>> GetPharmaciesByIds(IEnumerable<Guid> ids)
     {
         return await AppDbContext.Pharmacies
+            .AsNoTracking()
             .Where(p => ids.Contains(p.Id))
             .Include(p => p.Location)
             .ToListAsync();

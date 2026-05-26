@@ -1,49 +1,105 @@
 # DrugRegistry.API
 
-DrugRegistry exposes read APIs for drugs and pharmacies.
+DrugRegistry exposes public read APIs for drugs and pharmacies.
 
-## V2 API (current)
+## Running With Docker Compose
 
-V2 is available under `/api/v2` and follows resource-oriented design with query filters.
+Create a `.env` file from `.env.example`, set a real `POSTGRES_PASSWORD`, then start the stack:
+
+```sh
+docker compose up --build -d
+```
+
+Compose startup order:
+
+1. `db` starts Postgres and waits for `pg_isready`.
+2. `migrations` runs an idempotent EF migration bundle.
+3. `api` starts only after migrations complete successfully.
+
+The migration bundle is safe to run on every `docker compose up`; it only applies pending migrations.
+
+Required/important environment variables:
+
+- `POSTGRES_PASSWORD`: required, no default.
+- `POSTGRES_USER`: default `drugregistry`.
+- `POSTGRES_DB`: default `drugdb`.
+- `POSTGRES_DATA_PATH`: default `../files/postgres-data`.
+- `API_PORT`: default `8080`.
+- `CORS_ALLOWED_ORIGINS`: comma-separated browser origins allowed to call the API. Empty means no browser CORS origins are allowed.
+- `FORWARDED_HEADERS_KNOWN_PROXIES`: comma-separated proxy IP addresses allowed to supply `X-Forwarded-*` headers. Leave empty when the API is exposed directly.
+- `FORWARDED_HEADERS_KNOWN_NETWORKS`: comma-separated proxy CIDR networks allowed to supply `X-Forwarded-*` headers. Leave empty when the API is exposed directly.
+- `DATA_INGESTION_RUN_BOOTSTRAP_ON_STARTUP`: default `false`. Set to `true` only when you intentionally want startup to trigger scraping/seeding for empty tables.
+
+## Local Development
+
+The API requires `ConnectionStrings:Database` at startup. For local `dotnet run` or IDE launch, store it in user secrets instead of committing a developer password:
+
+```sh
+dotnet user-secrets set --project DrugRegistry.API "ConnectionStrings:Database" "Host=localhost;Port=5432;Database=drugdb;Username=drugregistry;Password=<your-local-password>"
+```
+
+## API Docs And Health
+
+- Scalar API docs: `GET /docs`
+- OpenAPI JSON: `GET /openapi/v2.json`, `GET /openapi/v1.json`
+- Liveness: `GET /health/live`
+- Readiness: `GET /health/ready`
+
+Swagger UI and Swashbuckle are not used.
+
+## V2 API
+
+V2 is available under `/api/v2` and is the current public API.
 
 ### Drugs
 
 1. `GET /api/v2/drugs`
-   - List drugs with pagination.
-   - Query params: `page` (default `0`), `size` (default `10`), `query` (search), `id` (repeatable id filter).
-   - Example: `/api/v2/drugs?page=0&size=10`
-   - Example: `/api/v2/drugs?query=paracetamol&page=0&size=10`
-   - Example: `/api/v2/drugs?id={guid1}&id={guid2}`
+   - Query params: `page`, `size`, `query`, repeatable `id`.
+   - Examples: `/api/v2/drugs?page=0&size=10`, `/api/v2/drugs?query=paracetamol`, `/api/v2/drugs?id={guid1}&id={guid2}`.
 2. `GET /api/v2/drugs/{id}`
-   - Get a single drug by id.
 3. `GET /api/v2/drugs/ean/{ean}`
-   - Get a single drug by EAN code.
 
 ### Pharmacies
 
 1. `GET /api/v2/pharmacies`
-   - List pharmacies with pagination and optional filters.
-   - Query params: `page` (default `0`), `size` (default `10`), `municipality`, `place`, `query`, `lon`, `lat`, `id` (repeatable id filter).
-   - Example: `/api/v2/pharmacies?page=0&size=10`
-   - Example: `/api/v2/pharmacies?query=zegin&page=0&size=10`
-   - Example: `/api/v2/pharmacies?lon=21.433&lat=41.998&page=0&size=10`
-   - Example: `/api/v2/pharmacies?id={guid1}&id={guid2}`
+   - Query params: `page`, `size`, `municipality`, `place`, `query`, `lon`, `lat`, repeatable `id`.
+   - Examples: `/api/v2/pharmacies?query=zegin`, `/api/v2/pharmacies?lon=21.433&lat=41.998`, `/api/v2/pharmacies?id={guid1}&id={guid2}`.
 2. `GET /api/v2/pharmacies/{id}`
-   - Get a single pharmacy by id.
 3. `GET /api/v2/pharmacies/municipalities`
-   - Get municipalities ordered by pharmacy frequency.
 4. `GET /api/v2/pharmacies/municipalities/{municipality}/places`
-   - Get places for a municipality ordered by pharmacy frequency.
 
-### Response format
+Collection endpoints return `data`, `totalCount`, `page`, and `size`. Invalid inputs return RFC 7807 Problem Details.
 
-- Collection endpoints return:
-  - `data`: list of resources
-  - `totalCount`: total matching rows
-  - `page`: current page (0-based)
-  - `size`: page size
-- Invalid inputs return RFC 7807 Problem Details.
+## Public Limits
 
-## V1 API (deprecated)
+Request limits:
 
-Existing V1 paths under `/api/*` are still available for compatibility but are deprecated in favor of `/api/v2/*`.
+- `page`: `0..500`, default `0`.
+- `size`: `1..20`, default `10`.
+- `query`: `2..80` trimmed characters.
+- `id`: at most `50` repeated ids per request.
+- `municipality`: at most `100` trimmed characters.
+- `place`: at most `100` trimmed characters.
+- `ean`: at most `32` trimmed characters.
+- `lon`: finite number in `-180..180`.
+- `lat`: finite number in `-90..90`.
+- `lon` and `lat` must be provided together.
+
+Rate limits are per client IP with no queueing:
+
+- Public API endpoints: `120` requests per minute.
+- Scalar/OpenAPI docs: `30` requests per minute.
+- Health endpoints: `60` requests per minute.
+
+Cache TTLs:
+
+- List/search endpoints: `2 minutes`.
+- Detail endpoints by id/EAN: `10 minutes`.
+- Municipality/place lookup endpoints: `30 minutes`.
+- Health endpoints and errors are not cached.
+
+Fuzzy search remains in memory. Query, page, and size limits are enforced before fuzzy search runs.
+
+## V1 API
+
+Existing V1 paths under `/api/*` remain available for compatibility, but they are deprecated in favor of `/api/v2/*`. V1 is also rate-limited and validates the same public limits where applicable.

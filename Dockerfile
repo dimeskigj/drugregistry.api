@@ -1,14 +1,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
-WORKDIR /app
-COPY ./DrugRegistry.API . 
-RUN dotnet restore
-RUN dotnet publish -c Release -o out
+WORKDIR /src
+COPY ./DrugRegistry.API/DrugRegistry.API.csproj ./DrugRegistry.API/
+RUN dotnet restore ./DrugRegistry.API/DrugRegistry.API.csproj
+
+COPY ./DrugRegistry.API ./DrugRegistry.API
+RUN dotnet publish ./DrugRegistry.API/DrugRegistry.API.csproj -c Release -o /app/out --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 
 WORKDIR /app
-COPY . .
-COPY --from=build /app/out /app/out
-EXPOSE 80
-ENTRYPOINT ["dotnet", "/app/out/DrugRegistry.API.dll"]
+ENV ASPNETCORE_URLS=http://+:8080
+COPY --from=build /app/out .
+EXPOSE 8080
+USER $APP_UID
+
+ENTRYPOINT ["dotnet", "DrugRegistry.API.dll"]

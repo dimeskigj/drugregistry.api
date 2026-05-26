@@ -15,12 +15,12 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
 
     public async Task<List<Drug>> GetAllDrugs()
     {
-        return await AppDbContext.Drugs.ToListAsync();
+        return await AppDbContext.Drugs.AsNoTracking().ToListAsync();
     }
 
     public async Task<Drug?> GetDrugById(Guid id)
     {
-        return await AppDbContext.Drugs.FirstOrDefaultAsync(d => d.Id == id);
+        return await AppDbContext.Drugs.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id);
     }
 
     public async Task<Drug?> GetDrugByDecisionNumberAndAtc(string decisionNumber, string atc)
@@ -42,7 +42,7 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
 
     public async Task<Guid> UpdateDrug(Drug drug, Guid id)
     {
-        var existingDrug = await GetDrugById(id);
+        var existingDrug = await AppDbContext.Drugs.FirstOrDefaultAsync(d => d.Id == id);
 
         if (existingDrug is null) throw new ArgumentException("Invalid drug id");
 
@@ -74,7 +74,7 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
     public async Task<PagedResult<Drug>> QueryDrugs(string query, int page, int size)
     {
         var minimalSize = size > MaxItemsPerPage ? MaxItemsPerPage : size;
-        var filtered = (await AppDbContext.Drugs.ToListAsync())
+        var filtered = (await AppDbContext.Drugs.AsNoTracking().ToListAsync())
             .Select(d => new
             {
                 Drug = d,
@@ -109,6 +109,7 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
         var total = await AppDbContext.Drugs.CountAsync();
 
         var drugs = await AppDbContext.Drugs
+            .AsNoTracking()
             .OrderBy(d => d.GenericName)
             .Skip(page * minimalSize)
             .Take(minimalSize)
@@ -119,14 +120,14 @@ public class DrugService(AppDbContext appDbContext) : BaseDbService(appDbContext
 
     public async Task<IEnumerable<Drug>> GetDrugsByIds(IEnumerable<Guid> ids)
     {
-        return await AppDbContext.Drugs.Where(d => ids.Contains(d.Id)).ToListAsync();
+        return await AppDbContext.Drugs.AsNoTracking().Where(d => ids.Contains(d.Id)).ToListAsync();
     }
 
     public async Task<Drug?> GetDrugByEan(string ean)
     {
-        var eanData = await AppDbContext.DrugEanData.FirstOrDefaultAsync(e => e.EanCode == ean);
+        var eanData = await AppDbContext.DrugEanData.AsNoTracking().FirstOrDefaultAsync(e => e.EanCode == ean);
         if (eanData == null || string.IsNullOrEmpty(eanData.DecisionNumber)) return null;
 
-        return await AppDbContext.Drugs.FirstOrDefaultAsync(d => d.DecisionNumber == eanData.DecisionNumber);
+        return await AppDbContext.Drugs.AsNoTracking().FirstOrDefaultAsync(d => d.DecisionNumber == eanData.DecisionNumber);
     }
 }

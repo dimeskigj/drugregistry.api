@@ -16,7 +16,6 @@ public static class Jobs
         .Create()
         .ForJob(DrugScrapingJobDetail)
         .WithIdentity(Constants.Quartz.DrugScrapingTriggerName)
-        .StartNow()
         .WithCronSchedule(EverySundayAt2300)
         .Build();
 
@@ -29,7 +28,6 @@ public static class Jobs
         .Create()
         .ForJob(PharmacyScrapingJobDetail)
         .WithIdentity(Constants.Quartz.PharmacyScrapingTriggerName)
-        .StartNow()
         .WithCronSchedule(EveryWednesdayAt2300)
         .Build();
 

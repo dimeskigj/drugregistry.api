@@ -1,10 +1,20 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 
-WORKDIR /app
-COPY ./DrugRegistry.API . 
-RUN dotnet tool install --global dotnet-ef
+WORKDIR /src
+COPY ./DrugRegistry.API/DrugRegistry.API.csproj ./DrugRegistry.API/
+RUN dotnet restore ./DrugRegistry.API/DrugRegistry.API.csproj
+
+COPY ./DrugRegistry.API ./DrugRegistry.API
+WORKDIR /src/DrugRegistry.API
+RUN dotnet tool install --global dotnet-ef --version 8.0.18
 ENV PATH="$PATH:/root/.dotnet/tools"
-COPY wait-for-it.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/wait-for-it.sh
-RUN dotnet restore
-CMD ["wait-for-it.sh", "db:5432", "--", "dotnet", "ef", "database", "update"]
+ENV ConnectionStrings__Database="Host=localhost;Port=5432;Database=drugdb;Username=postgres;Password=postgres"
+RUN dotnet ef migrations bundle --configuration Release --output /out/migrate
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
+
+WORKDIR /app
+COPY --from=build /out/migrate .
+USER $APP_UID
+
+ENTRYPOINT ["/app/migrate"]

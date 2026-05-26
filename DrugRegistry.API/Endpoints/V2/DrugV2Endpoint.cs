@@ -1,7 +1,9 @@
+using DrugRegistry.API.Endpoints;
 using DrugRegistry.API.Contracts.V2;
 using DrugRegistry.API.Endpoints.Interfaces;
 using DrugRegistry.API.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace DrugRegistry.API.Endpoints.V2;
 
@@ -15,7 +17,9 @@ public class DrugV2Endpoint : IEndpoint
 
     public WebApplication MapEndpoints(WebApplication app)
     {
-        var group = app.MapGroup("/api/v2/drugs").WithTags("Drugs V2");
+        var group = app.MapGroup("/api/v2/drugs")
+            .WithTags("Drugs V2")
+            .RequireRateLimiting(ApiLimits.RateLimitPolicies.PublicApi);
 
         group.MapGet("/", async (
                 IDrugService drugService,
@@ -26,6 +30,9 @@ public class DrugV2Endpoint : IEndpoint
             {
                 if (ids is { Length: > 0 })
                 {
+                    if (RequestValidation.ValidateIdFilters(ids.Length) is { } idFilterError)
+                        return V2ProblemResponses.BadRequest(idFilterError);
+
                     if (!string.IsNullOrWhiteSpace(query))
                         return V2ProblemResponses.BadRequest("The 'query' filter cannot be combined with 'id'.");
 
@@ -37,16 +44,18 @@ public class DrugV2Endpoint : IEndpoint
                     return Results.Ok(new PagedResponse<DrugResponse>(drugsById, drugsById.Count, 0, drugsById.Count));
                 }
 
-                var pageNumber = page ?? 0;
-                var pageSize = size ?? 10;
+                var pageNumber = page ?? ApiLimits.DefaultPage;
+                var pageSize = size ?? ApiLimits.DefaultPageSize;
 
-                if (pageNumber < 0 || pageSize <= 0)
-                    return V2ProblemResponses.BadRequest(
-                        "'page' must be greater than or equal to 0 and 'size' must be greater than 0.");
+                if (RequestValidation.ValidatePagination(pageNumber, pageSize) is { } paginationError)
+                    return V2ProblemResponses.BadRequest(paginationError);
 
-                if (!string.IsNullOrWhiteSpace(query))
+                if (RequestValidation.ValidateOptionalQuery(query, out var normalizedQuery) is { } queryError)
+                    return V2ProblemResponses.BadRequest(queryError);
+
+                if (normalizedQuery is not null)
                 {
-                    var searched = await drugService.QueryDrugs(query.Trim(), pageNumber, pageSize);
+                    var searched = await drugService.QueryDrugs(normalizedQuery, pageNumber, pageSize);
                     return Results.Ok(searched.ToResponse());
                 }
 
@@ -57,7 +66,9 @@ public class DrugV2Endpoint : IEndpoint
             .ProducesProblem(400)
             .WithName("List V2 drugs")
             .WithSummary("List or filter drugs")
-            .WithDescription("Returns paged drugs. Supports query filtering or explicit id filtering.");
+            .WithDescription(
+                "Returns paged drugs. Limits: page 0-500, size 1-20, query 2-80 chars, up to 50 repeated id filters.")
+            .CacheOutput(ApiLimits.CachePolicies.List);
 
         group.MapGet("/{id:guid}", async (
                 IDrugService drugService,
@@ -71,15 +82,15 @@ public class DrugV2Endpoint : IEndpoint
             .Produces<DrugResponse>()
             .ProducesProblem(404)
             .WithName("Get V2 drug by id")
-            .WithSummary("Get a drug by id");
+            .WithSummary("Get a drug by id")
+            .CacheOutput(ApiLimits.CachePolicies.Detail);
 
         group.MapGet("/ean/{ean}", async (
                 IDrugService drugService,
                 string ean) =>
             {
-                var trimmedEan = ean.Trim();
-                if (string.IsNullOrWhiteSpace(trimmedEan))
-                    return V2ProblemResponses.BadRequest("The 'ean' path parameter is required.");
+                if (RequestValidation.ValidateEan(ean, out var trimmedEan) is { } eanError)
+                    return V2ProblemResponses.BadRequest(eanError);
 
                 var drug = await drugService.GetDrugByEan(trimmedEan);
                 return drug is null
@@ -90,7 +101,8 @@ public class DrugV2Endpoint : IEndpoint
             .ProducesProblem(400)
             .ProducesProblem(404)
             .WithName("Get V2 drug by ean")
-            .WithSummary("Get a drug by EAN");
+            .WithSummary("Get a drug by EAN")
+            .CacheOutput(ApiLimits.CachePolicies.Detail);
 
         return app;
     }
